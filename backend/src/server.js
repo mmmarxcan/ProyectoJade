@@ -1,17 +1,42 @@
 const express = require("express");
 const cors = require("cors");
+const fs = require("fs");
 const { createClient } = require("@supabase/supabase-js");
+const path = require("path");
 require("dotenv").config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Configuración de CORS para permitir solicitudes del frontend (puerto 5173 por defecto en Vite)
+// Configuración de CORS - Se adapta según el entorno
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  process.env.FRONTEND_URL || "http://localhost:3000"
+];
+
 app.use(cors({
-  origin: ["http://localhost:5173", "http://127.0.0.1:5173", "*"], // Puedes ajustar los dominios en producción
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  }
 }));
 
 app.use(express.json());
+
+// Servir archivos estáticos del frontend
+const distPath = path.join(__dirname, "../../frontend/dist");
+
+if (!fs.existsSync(distPath)) {
+  console.error(`ERROR: No se encontró el directorio de frontend construido en ${distPath}.`);
+  console.error("Ejecuta 'npm run build' en el frontend o el script de build del backend antes de iniciar.");
+  process.exit(1);
+}
+
+app.use(express.static(distPath));
 
 // Inicialización de Supabase
 const supabaseUrl = process.env.SUPABASE_URL;
@@ -69,6 +94,16 @@ app.post("/api/responses", async (req, res) => {
 // Endpoint de estado/salud para verificar que el servidor corre
 app.get("/health", (req, res) => {
   res.status(200).json({ status: "OK", message: "Servidor Express activo y listo." });
+});
+
+// Ruta raíz explícita para servir la aplicación
+app.get("/", (req, res) => {
+  res.sendFile(path.join(distPath, "index.html"));
+});
+
+// Servir index.html para todas las rutas de SPA que no coinciden con otros endpoints
+app.get("*", (req, res) => {
+  res.sendFile(path.join(distPath, "index.html"));
 });
 
 app.listen(PORT, () => {
