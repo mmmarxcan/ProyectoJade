@@ -299,31 +299,34 @@ export default function App() {
   const evadeNo = useCallback(() => {
     if (phase === "yes" || phase === "message") return;
     const btn = noRef.current;
-    const card = cardRef.current;
+    const cont = containerRef.current; // div padre del botón (position: relative)
     if (!btn) return;
 
     const minPadding = 8;
     const maxDelta = 100; // limitar cuánto se mueve cada vez
 
-    if (card) {
-      const cardRect = card.getBoundingClientRect();
+    if (cont) {
+      const contRect = cont.getBoundingClientRect();
       const btnRect = btn.getBoundingClientRect();
 
-      // Posición actual relativa a la tarjeta (si ya se movió, usar noPos)
-      const current = noCount > 0 ? { x: noPos.x, y: noPos.y } : { x: btnRect.left - cardRect.left, y: btnRect.top - cardRect.top };
+      // Posición actual relativa al contenedor (si ya se movió, usar noPos)
+      const current = noCount > 0
+        ? { x: noPos.x, y: noPos.y }
+        : { x: btnRect.left - contRect.left, y: btnRect.top - contRect.top };
 
-      const availableWidth = Math.max(0, cardRect.width - btn.offsetWidth - minPadding * 2);
-      const availableHeight = Math.max(0, cardRect.height - btn.offsetHeight - minPadding * 2);
+      // Límites: el botón debe quedar completamente dentro del contenedor
+      const maxX = Math.max(0, contRect.width - btn.offsetWidth - minPadding);
+      const maxY = Math.max(0, contRect.height - btn.offsetHeight - minPadding);
 
       let nx = current.x + (Math.random() * 2 - 1) * maxDelta;
       let ny = current.y + (Math.random() * 2 - 1) * maxDelta;
 
-      nx = Math.max(minPadding, Math.min(nx, availableWidth + minPadding));
-      ny = Math.max(minPadding, Math.min(ny, availableHeight + minPadding));
+      nx = Math.max(minPadding, Math.min(nx, maxX));
+      ny = Math.max(minPadding, Math.min(ny, maxY));
 
       setNoPos({ x: Math.round(nx), y: Math.round(ny) });
     } else {
-      // Fallback al viewport, pero con delta limitado
+      // Fallback al viewport
       const current = noCount > 0 ? { x: noPos.x, y: noPos.y } : { x: btn.offsetLeft, y: btn.offsetTop };
       const nx = Math.max(minPadding, Math.min(current.x + (Math.random() * 2 - 1) * (maxDelta + 20), window.innerWidth - btn.offsetWidth - minPadding));
       const ny = Math.max(minPadding, Math.min(current.y + (Math.random() * 2 - 1) * (maxDelta + 20), window.innerHeight - btn.offsetHeight - minPadding));
@@ -342,9 +345,9 @@ export default function App() {
       const btn = noRef.current;
       if (!btn) return;
       const minPadding = 8;
-      const card = cardRef.current;
-      if (card) {
-        const rect = card.getBoundingClientRect();
+      const cont = containerRef.current;
+      if (cont) {
+        const rect = cont.getBoundingClientRect();
         const maxX = Math.max(minPadding, rect.width - btn.offsetWidth - minPadding);
         const maxY = Math.max(minPadding, rect.height - btn.offsetHeight - minPadding);
         setNoPos((pos) => ({
@@ -621,6 +624,7 @@ export default function App() {
               {/* Buttons area */}
               {phase === "idle" || phase === "no" ? (
                 <div
+                  ref={containerRef}
                   className="relative w-full flex flex-col items-center gap-4"
                   style={{ minHeight: "120px" }}
                 >
