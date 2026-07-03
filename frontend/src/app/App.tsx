@@ -299,24 +299,39 @@ export default function App() {
     if (phase === "yes" || phase === "message") return;
     const btn = noRef.current;
     if (!btn) return;
+    // Calcular límites seguros basados en la ventana (viewport)
+    const minPadding = 10;
+    const availableWidth = Math.max(0, window.innerWidth - btn.offsetWidth - minPadding * 2);
+    const availableHeight = Math.max(0, window.innerHeight - btn.offsetHeight - minPadding * 2);
 
-    // Calcular límites basados en la ventana de visualización (viewport)
-    const maxX = window.innerWidth - btn.offsetWidth - 20;
-    const maxY = window.innerHeight - btn.offsetHeight - 20;
+    const nx = minPadding + Math.random() * availableWidth;
+    const ny = minPadding + Math.random() * availableHeight;
 
-    let nx = Math.random() * maxX;
-    let ny = Math.random() * maxY;
-
-    // Mantener dentro de un rango visible seguro
-    nx = Math.max(10, Math.min(nx, maxX));
-    ny = Math.max(10, Math.min(ny, maxY));
-
-    setNoPos({ x: nx, y: ny });
+    // Usar valores enteros para evitar subpixel y mantener dentro del viewport
+    setNoPos({ x: Math.round(nx), y: Math.round(ny) });
     const next = noCount + 1;
     setNoCount(next);
     setNoLabel(NO_LABELS[Math.min(next, NO_LABELS.length - 1)]);
     setPhase("no");
   }, [noCount, phase]);
+
+  // Ajustar posición del botón si cambia el tamaño de la ventana
+  useEffect(() => {
+    const onResize = () => {
+      const btn = noRef.current;
+      if (!btn) return;
+      const minPadding = 10;
+      const maxX = Math.max(minPadding, window.innerWidth - btn.offsetWidth - minPadding);
+      const maxY = Math.max(minPadding, window.innerHeight - btn.offsetHeight - minPadding);
+      setNoPos((pos) => ({
+        x: Math.max(minPadding, Math.min(pos.x, maxX)),
+        y: Math.max(minPadding, Math.min(pos.y, maxY)),
+      }));
+    };
+
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   const handleYes = () => {
     setPhase("message");
