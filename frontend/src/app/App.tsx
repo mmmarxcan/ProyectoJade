@@ -272,89 +272,13 @@ function BloomBackground({ phase }: { phase: "idle" | "message" | "yes" | "no" }
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function App() {
-  const [phase, setPhase] = useState<"idle" | "message" | "yes" | "no">("idle");
+  const [phase, setPhase] = useState<"idle" | "message" | "yes">("idle");
   const [confettiTrigger, setConfettiTrigger] = useState(0);
-  const [noPos, setNoPos] = useState({ x: 0, y: 0 });
-  const [noCount, setNoCount] = useState(0);
-  const [noLabel, setNoLabel] = useState("No");
   const [customMessage, setCustomMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [dbError, setDbError] = useState<string | null>(null);
 
-  const noRef = useRef<HTMLButtonElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
-
-  const NO_LABELS = [
-    "No",
-    "¿Estás segura? 🥺",
-    "Piénsalo otra vez... 💔",
-    "¿De verdad? 😭",
-    "Mmm, ¿tal vez? 🤔",
-    "¡Última oportunidad! ⚠️",
-    "Por favooor... 🙏",
-    "¡Di que sí! 💕",
-  ];
-
-  const evadeNo = useCallback(() => {
-    if (phase === "yes" || phase === "message") return;
-    const btn = noRef.current;
-    const card = cardRef.current;
-    if (!btn || !card) return;
-
-    const pad = 10;
-    const maxDelta = 120;
-    const btnW = btn.offsetWidth;
-    const btnH = btn.offsetHeight;
-
-    // Límites: el rectángulo de la tarjeta en el viewport
-    const cardRect = card.getBoundingClientRect();
-    const minX = cardRect.left + pad;
-    const maxX = cardRect.right - btnW - pad;
-    const minY = cardRect.top + pad;
-    const maxY = cardRect.bottom - btnH - pad;
-
-    // Posición actual en coordenadas fixed (viewport)
-    const btnRect = btn.getBoundingClientRect();
-    const current = noCount > 0
-      ? { x: noPos.x, y: noPos.y }
-      : { x: btnRect.left, y: btnRect.top };
-
-    let nx = current.x + (Math.random() * 2 - 1) * maxDelta;
-    let ny = current.y + (Math.random() * 2 - 1) * maxDelta;
-
-    // Clamp estricto dentro de la tarjeta
-    nx = Math.max(minX, Math.min(nx, maxX));
-    ny = Math.max(minY, Math.min(ny, maxY));
-
-    setNoPos({ x: Math.round(nx), y: Math.round(ny) });
-
-    const next = noCount + 1;
-    setNoCount(next);
-    setNoLabel(NO_LABELS[Math.min(next, NO_LABELS.length - 1)]);
-    setPhase("no");
-  }, [noCount, phase, noPos]);
-
-  // Reajustar si cambia el tamaño de ventana
-  useEffect(() => {
-    const onResize = () => {
-      const btn = noRef.current;
-      const card = cardRef.current;
-      if (!btn || !card || noCount === 0) return;
-      const pad = 10;
-      const cardRect = card.getBoundingClientRect();
-      const minX = cardRect.left + pad;
-      const maxX = cardRect.right - btn.offsetWidth - pad;
-      const minY = cardRect.top + pad;
-      const maxY = cardRect.bottom - btn.offsetHeight - pad;
-      setNoPos((pos) => ({
-        x: Math.max(minX, Math.min(pos.x, maxX)),
-        y: Math.max(minY, Math.min(pos.y, maxY)),
-      }));
-    };
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, [noCount]);
 
   const handleYes = () => {
     setPhase("message");
@@ -449,14 +373,12 @@ export default function App() {
         .btn-cyber-shimmer:hover {
           animation: shimmer 1.2s linear infinite;
         }
-        .no-btn-abs {
-          position: fixed;
-          z-index: 9999;
-          transition: left 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), top 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
-        }
-        .no-btn-static {
+        .no-btn {
           position: relative;
-          transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+          transition: opacity 0.2s ease;
+        }
+        .no-btn:hover {
+          opacity: 0.75;
         }
       `}</style>
 
@@ -610,12 +532,8 @@ export default function App() {
               />
 
               {/* Buttons area */}
-              {phase === "idle" || phase === "no" ? (
-                <div
-                  ref={containerRef}
-                  className="relative w-full flex flex-col items-center gap-4"
-                  style={{ minHeight: "120px" }}
-                >
+              {phase === "idle" ? (
+                <div className="w-full flex flex-col items-center gap-4">
                   {/* Yes button */}
                   <button
                     onClick={handleYes}
@@ -629,27 +547,16 @@ export default function App() {
                     ¡Sí, totalmente! ✨
                   </button>
 
-                  {/* No button — static initially, absolute after first evasion */}
+                  {/* No button — estático */}
                   <button
-                    ref={noRef}
-                    onClick={evadeNo}
-                    onMouseEnter={evadeNo}
-                    className={`${noCount > 0 ? "no-btn-abs" : "no-btn-static w-full"} py-3 px-8 rounded-2xl font-medium text-sm select-none cursor-pointer`}
+                    className="no-btn w-full py-3 px-8 rounded-2xl font-medium text-sm cursor-pointer"
                     style={{
                       color: "#9A7B6E",
                       background: "rgba(240,232,223,0.7)",
                       border: "1.5px solid rgba(180,140,120,0.2)",
-                      ...(noCount > 0
-                        ? {
-                            left: `${noPos.x}px`,
-                            top: `${noPos.y}px`,
-                            width: "auto",
-                            whiteSpace: "nowrap",
-                          }
-                        : {}),
                     }}
                   >
-                    {noLabel}
+                    No
                   </button>
                 </div>
               ) : phase === "message" ? (
