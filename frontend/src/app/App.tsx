@@ -299,39 +299,29 @@ export default function App() {
   const evadeNo = useCallback(() => {
     if (phase === "yes" || phase === "message") return;
     const btn = noRef.current;
-    const cont = containerRef.current; // div padre del botón (position: relative)
     if (!btn) return;
 
-    const minPadding = 8;
-    const maxDelta = 100; // limitar cuánto se mueve cada vez
+    const pad = 12;
+    const maxDelta = 130;
+    const btnW = btn.offsetWidth;
+    const btnH = btn.offsetHeight;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
 
-    if (cont) {
-      const contRect = cont.getBoundingClientRect();
-      const btnRect = btn.getBoundingClientRect();
+    // Si es la primera evasión, empezamos desde la posición actual del botón en el viewport
+    const btnRect = btn.getBoundingClientRect();
+    const current = noCount > 0
+      ? { x: noPos.x, y: noPos.y }
+      : { x: btnRect.left, y: btnRect.top };
 
-      // Posición actual relativa al contenedor (si ya se movió, usar noPos)
-      const current = noCount > 0
-        ? { x: noPos.x, y: noPos.y }
-        : { x: btnRect.left - contRect.left, y: btnRect.top - contRect.top };
+    let nx = current.x + (Math.random() * 2 - 1) * maxDelta;
+    let ny = current.y + (Math.random() * 2 - 1) * maxDelta;
 
-      // Límites: el botón debe quedar completamente dentro del contenedor
-      const maxX = Math.max(0, contRect.width - btn.offsetWidth - minPadding);
-      const maxY = Math.max(0, contRect.height - btn.offsetHeight - minPadding);
+    // Clamp estricto al viewport — nunca puede salirse de la pantalla
+    nx = Math.max(pad, Math.min(nx, vw - btnW - pad));
+    ny = Math.max(pad, Math.min(ny, vh - btnH - pad));
 
-      let nx = current.x + (Math.random() * 2 - 1) * maxDelta;
-      let ny = current.y + (Math.random() * 2 - 1) * maxDelta;
-
-      nx = Math.max(minPadding, Math.min(nx, maxX));
-      ny = Math.max(minPadding, Math.min(ny, maxY));
-
-      setNoPos({ x: Math.round(nx), y: Math.round(ny) });
-    } else {
-      // Fallback al viewport
-      const current = noCount > 0 ? { x: noPos.x, y: noPos.y } : { x: btn.offsetLeft, y: btn.offsetTop };
-      const nx = Math.max(minPadding, Math.min(current.x + (Math.random() * 2 - 1) * (maxDelta + 20), window.innerWidth - btn.offsetWidth - minPadding));
-      const ny = Math.max(minPadding, Math.min(current.y + (Math.random() * 2 - 1) * (maxDelta + 20), window.innerHeight - btn.offsetHeight - minPadding));
-      setNoPos({ x: Math.round(nx), y: Math.round(ny) });
-    }
+    setNoPos({ x: Math.round(nx), y: Math.round(ny) });
 
     const next = noCount + 1;
     setNoCount(next);
@@ -339,34 +329,22 @@ export default function App() {
     setPhase("no");
   }, [noCount, phase, noPos]);
 
-  // Ajustar posición del botón si cambia el tamaño de la ventana
+  // Reajustar si cambia el tamaño de ventana para que nunca quede fuera
   useEffect(() => {
     const onResize = () => {
       const btn = noRef.current;
-      if (!btn) return;
-      const minPadding = 8;
-      const cont = containerRef.current;
-      if (cont) {
-        const rect = cont.getBoundingClientRect();
-        const maxX = Math.max(minPadding, rect.width - btn.offsetWidth - minPadding);
-        const maxY = Math.max(minPadding, rect.height - btn.offsetHeight - minPadding);
-        setNoPos((pos) => ({
-          x: Math.max(minPadding, Math.min(pos.x, maxX)),
-          y: Math.max(minPadding, Math.min(pos.y, maxY)),
-        }));
-      } else {
-        const maxX = Math.max(minPadding, window.innerWidth - btn.offsetWidth - minPadding);
-        const maxY = Math.max(minPadding, window.innerHeight - btn.offsetHeight - minPadding);
-        setNoPos((pos) => ({
-          x: Math.max(minPadding, Math.min(pos.x, maxX)),
-          y: Math.max(minPadding, Math.min(pos.y, maxY)),
-        }));
-      }
+      if (!btn || noCount === 0) return;
+      const pad = 12;
+      const maxX = window.innerWidth - btn.offsetWidth - pad;
+      const maxY = window.innerHeight - btn.offsetHeight - pad;
+      setNoPos((pos) => ({
+        x: Math.max(pad, Math.min(pos.x, maxX)),
+        y: Math.max(pad, Math.min(pos.y, maxY)),
+      }));
     };
-
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
-  }, []);
+  }, [noCount]);
 
   const handleYes = () => {
     setPhase("message");
@@ -462,9 +440,9 @@ export default function App() {
           animation: shimmer 1.2s linear infinite;
         }
         .no-btn-abs {
-          position: absolute;
-          z-index: 50;
-          transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+          position: fixed;
+          z-index: 9999;
+          transition: left 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), top 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
         .no-btn-static {
           position: relative;
