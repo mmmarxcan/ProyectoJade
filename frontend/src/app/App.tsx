@@ -283,6 +283,7 @@ export default function App() {
 
   const noRef = useRef<HTMLButtonElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
 
   const NO_LABELS = [
     "No",
@@ -298,35 +299,66 @@ export default function App() {
   const evadeNo = useCallback(() => {
     if (phase === "yes" || phase === "message") return;
     const btn = noRef.current;
+    const card = cardRef.current;
     if (!btn) return;
-    // Calcular límites seguros basados en la ventana (viewport)
-    const minPadding = 10;
-    const availableWidth = Math.max(0, window.innerWidth - btn.offsetWidth - minPadding * 2);
-    const availableHeight = Math.max(0, window.innerHeight - btn.offsetHeight - minPadding * 2);
 
-    const nx = minPadding + Math.random() * availableWidth;
-    const ny = minPadding + Math.random() * availableHeight;
+    const minPadding = 8;
+    const maxDelta = 100; // limitar cuánto se mueve cada vez
 
-    // Usar valores enteros para evitar subpixel y mantener dentro del viewport
-    setNoPos({ x: Math.round(nx), y: Math.round(ny) });
+    if (card) {
+      const cardRect = card.getBoundingClientRect();
+      const btnRect = btn.getBoundingClientRect();
+
+      // Posición actual relativa a la tarjeta (si ya se movió, usar noPos)
+      const current = noCount > 0 ? { x: noPos.x, y: noPos.y } : { x: btnRect.left - cardRect.left, y: btnRect.top - cardRect.top };
+
+      const availableWidth = Math.max(0, cardRect.width - btn.offsetWidth - minPadding * 2);
+      const availableHeight = Math.max(0, cardRect.height - btn.offsetHeight - minPadding * 2);
+
+      let nx = current.x + (Math.random() * 2 - 1) * maxDelta;
+      let ny = current.y + (Math.random() * 2 - 1) * maxDelta;
+
+      nx = Math.max(minPadding, Math.min(nx, availableWidth + minPadding));
+      ny = Math.max(minPadding, Math.min(ny, availableHeight + minPadding));
+
+      setNoPos({ x: Math.round(nx), y: Math.round(ny) });
+    } else {
+      // Fallback al viewport, pero con delta limitado
+      const current = noCount > 0 ? { x: noPos.x, y: noPos.y } : { x: btn.offsetLeft, y: btn.offsetTop };
+      const nx = Math.max(minPadding, Math.min(current.x + (Math.random() * 2 - 1) * (maxDelta + 20), window.innerWidth - btn.offsetWidth - minPadding));
+      const ny = Math.max(minPadding, Math.min(current.y + (Math.random() * 2 - 1) * (maxDelta + 20), window.innerHeight - btn.offsetHeight - minPadding));
+      setNoPos({ x: Math.round(nx), y: Math.round(ny) });
+    }
+
     const next = noCount + 1;
     setNoCount(next);
     setNoLabel(NO_LABELS[Math.min(next, NO_LABELS.length - 1)]);
     setPhase("no");
-  }, [noCount, phase]);
+  }, [noCount, phase, noPos]);
 
   // Ajustar posición del botón si cambia el tamaño de la ventana
   useEffect(() => {
     const onResize = () => {
       const btn = noRef.current;
       if (!btn) return;
-      const minPadding = 10;
-      const maxX = Math.max(minPadding, window.innerWidth - btn.offsetWidth - minPadding);
-      const maxY = Math.max(minPadding, window.innerHeight - btn.offsetHeight - minPadding);
-      setNoPos((pos) => ({
-        x: Math.max(minPadding, Math.min(pos.x, maxX)),
-        y: Math.max(minPadding, Math.min(pos.y, maxY)),
-      }));
+      const minPadding = 8;
+      const card = cardRef.current;
+      if (card) {
+        const rect = card.getBoundingClientRect();
+        const maxX = Math.max(minPadding, rect.width - btn.offsetWidth - minPadding);
+        const maxY = Math.max(minPadding, rect.height - btn.offsetHeight - minPadding);
+        setNoPos((pos) => ({
+          x: Math.max(minPadding, Math.min(pos.x, maxX)),
+          y: Math.max(minPadding, Math.min(pos.y, maxY)),
+        }));
+      } else {
+        const maxX = Math.max(minPadding, window.innerWidth - btn.offsetWidth - minPadding);
+        const maxY = Math.max(minPadding, window.innerHeight - btn.offsetHeight - minPadding);
+        setNoPos((pos) => ({
+          x: Math.max(minPadding, Math.min(pos.x, maxX)),
+          y: Math.max(minPadding, Math.min(pos.y, maxY)),
+        }));
+      }
     };
 
     window.addEventListener("resize", onResize);
@@ -427,7 +459,7 @@ export default function App() {
           animation: shimmer 1.2s linear infinite;
         }
         .no-btn-abs {
-          position: fixed;
+          position: absolute;
           z-index: 50;
           transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
@@ -456,6 +488,7 @@ export default function App() {
           style={{ animation: "fadeSlideUp 0.7s ease both" }}
         >
           <div
+            ref={cardRef}
             className={`relative rounded-3xl shadow-sm overflow-hidden transition-colors duration-1000 ${
               phase === "yes" 
                 ? "bg-zinc-950/90 text-white border-emerald-500/30" 
