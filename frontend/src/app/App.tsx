@@ -299,16 +299,22 @@ export default function App() {
   const evadeNo = useCallback(() => {
     if (phase === "yes" || phase === "message") return;
     const btn = noRef.current;
-    if (!btn) return;
+    const card = cardRef.current;
+    if (!btn || !card) return;
 
-    const pad = 12;
-    const maxDelta = 130;
+    const pad = 10;
+    const maxDelta = 120;
     const btnW = btn.offsetWidth;
     const btnH = btn.offsetHeight;
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
 
-    // Si es la primera evasión, empezamos desde la posición actual del botón en el viewport
+    // Límites: el rectángulo de la tarjeta en el viewport
+    const cardRect = card.getBoundingClientRect();
+    const minX = cardRect.left + pad;
+    const maxX = cardRect.right - btnW - pad;
+    const minY = cardRect.top + pad;
+    const maxY = cardRect.bottom - btnH - pad;
+
+    // Posición actual en coordenadas fixed (viewport)
     const btnRect = btn.getBoundingClientRect();
     const current = noCount > 0
       ? { x: noPos.x, y: noPos.y }
@@ -317,9 +323,9 @@ export default function App() {
     let nx = current.x + (Math.random() * 2 - 1) * maxDelta;
     let ny = current.y + (Math.random() * 2 - 1) * maxDelta;
 
-    // Clamp estricto al viewport — nunca puede salirse de la pantalla
-    nx = Math.max(pad, Math.min(nx, vw - btnW - pad));
-    ny = Math.max(pad, Math.min(ny, vh - btnH - pad));
+    // Clamp estricto dentro de la tarjeta
+    nx = Math.max(minX, Math.min(nx, maxX));
+    ny = Math.max(minY, Math.min(ny, maxY));
 
     setNoPos({ x: Math.round(nx), y: Math.round(ny) });
 
@@ -329,17 +335,21 @@ export default function App() {
     setPhase("no");
   }, [noCount, phase, noPos]);
 
-  // Reajustar si cambia el tamaño de ventana para que nunca quede fuera
+  // Reajustar si cambia el tamaño de ventana
   useEffect(() => {
     const onResize = () => {
       const btn = noRef.current;
-      if (!btn || noCount === 0) return;
-      const pad = 12;
-      const maxX = window.innerWidth - btn.offsetWidth - pad;
-      const maxY = window.innerHeight - btn.offsetHeight - pad;
+      const card = cardRef.current;
+      if (!btn || !card || noCount === 0) return;
+      const pad = 10;
+      const cardRect = card.getBoundingClientRect();
+      const minX = cardRect.left + pad;
+      const maxX = cardRect.right - btn.offsetWidth - pad;
+      const minY = cardRect.top + pad;
+      const maxY = cardRect.bottom - btn.offsetHeight - pad;
       setNoPos((pos) => ({
-        x: Math.max(pad, Math.min(pos.x, maxX)),
-        y: Math.max(pad, Math.min(pos.y, maxY)),
+        x: Math.max(minX, Math.min(pos.x, maxX)),
+        y: Math.max(minY, Math.min(pos.y, maxY)),
       }));
     };
     window.addEventListener("resize", onResize);
@@ -470,7 +480,7 @@ export default function App() {
         >
           <div
             ref={cardRef}
-            className={`relative rounded-3xl shadow-sm overflow-hidden transition-colors duration-1000 ${
+            className={`relative rounded-3xl shadow-sm transition-colors duration-1000 ${
               phase === "yes" 
                 ? "bg-zinc-950/90 text-white border-emerald-500/30" 
                 : "bg-card text-foreground"
